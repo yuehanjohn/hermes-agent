@@ -2,6 +2,7 @@ services:
   hermes:
     build: .
     restart: unless-stopped
+    command: ["slack"]
     volumes:
       - hermes_data:/opt/data
     environment:
