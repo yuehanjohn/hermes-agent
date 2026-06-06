@@ -7,7 +7,10 @@ services:
     environment:
       - HERMES_UID=10000
       - HERMES_GID=10000
-    command: ["gateway", "run"]
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
+      - SLACK_ALLOWED_USERS=${SLACK_ALLOWED_USERS}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
 
 volumes:
   hermes_data:
