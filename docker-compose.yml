@@ -26,18 +26,18 @@
 #     and API_SERVER_HOST. See docs/user-guide/api-server.md before doing
 #     this on an internet-facing host.
 #
-services:
-  gateway:
-    build: .
-    image: hermes-agent
-    container_name: hermes
-    restart: unless-stopped
-    network_mode: host
-    volumes:
-      - ~/.hermes:/opt/data
-    environment:
-      - HERMES_UID=${HERMES_UID:-10000}
-      - HERMES_GID=${HERMES_GID:-10000}
+# services:
+#   gateway:
+#     build: .
+#     image: hermes-agent
+#     container_name: hermes
+#     restart: unless-stopped
+#     network_mode: host
+#     volumes:
+#       - ~/.hermes:/opt/data
+#     environment:
+#       - HERMES_UID=${HERMES_UID:-10000}
+#       - HERMES_GID=${HERMES_GID:-10000}
       # To expose the OpenAI-compatible API server beyond localhost,
       # uncomment BOTH lines (API_SERVER_KEY is mandatory for auth):
       # - API_SERVER_HOST=0.0.0.0
@@ -58,19 +58,41 @@ services:
       # - GOOGLE_CHAT_SUBSCRIPTION_NAME=${GOOGLE_CHAT_SUBSCRIPTION_NAME}
       # - GOOGLE_CHAT_SERVICE_ACCOUNT_JSON=${GOOGLE_CHAT_SERVICE_ACCOUNT_JSON}
       # - GOOGLE_CHAT_ALLOWED_USERS=${GOOGLE_CHAT_ALLOWED_USERS}
-    command: ["gateway", "run"]
+  #   command: ["gateway", "run"]
 
-  dashboard:
-    image: hermes-agent
-    container_name: hermes-dashboard
+  # dashboard:
+  #   image: hermes-agent
+  #   container_name: hermes-dashboard
+  #   restart: unless-stopped
+  #   network_mode: host
+  #   depends_on:
+  #     - gateway
+  #   volumes:
+  #     - ~/.hermes:/opt/data
+  #   environment:
+  #     - HERMES_UID=${HERMES_UID:-10000}
+  #     - HERMES_GID=${HERMES_GID:-10000}
+  #   # Localhost-only. For remote access, tunnel via `ssh -L 9119:localhost:9119`.
+  #   command: ["dashboard", "--host", "127.0.0.1", "--no-open"]
+
+# docker-compose.yml — Coolify-compatible Hermes Agent
+# Slack + Gemini. Single container. s6-overlay manages gateway + dashboard internally.
+#
+# DO NOT split gateway/dashboard into two services.
+# DO NOT use network_mode: host.
+# DO NOT override command — s6-overlay needs to be PID 1 and manage everything.
+# Dashboard intentionally NOT exposed publicly — use SSH tunnel: ssh -L 9119:localhost:9119
+
+services:
+  hermes:
+    build: .
     restart: unless-stopped
-    network_mode: host
-    depends_on:
-      - gateway
     volumes:
-      - ~/.hermes:/opt/data
+      - hermes_data:/opt/data
     environment:
-      - HERMES_UID=${HERMES_UID:-10000}
-      - HERMES_GID=${HERMES_GID:-10000}
-    # Localhost-only. For remote access, tunnel via `ssh -L 9119:localhost:9119`.
-    command: ["dashboard", "--host", "127.0.0.1", "--no-open"]
+      - HERMES_UID=10000
+      - HERMES_GID=10000
+
+volumes:
+  hermes_data:
+    driver: local
