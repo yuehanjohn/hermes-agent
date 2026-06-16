@@ -1,0 +1,73 @@
+#
+# docker-compose.coolify.yml — Coolify / self-hosted VPS deployment
+#
+# Coolify compatibility fixes vs upstream docker-compose.yml:
+#   • Named volume (hermes-data) replaces ~/.hermes — tilde paths are not
+#     expanded by Coolify's compose parser
+#   • network_mode: host removed — Coolify uses managed bridge networks;
+#     Slack Socket Mode needs no inbound ports so this is a no-op for the bot
+#   • container_name removed — Coolify assigns names itself; hardcoded names
+#     collide with its internal naming scheme
+#   • Commented-out environment blocks removed — break Coolify's compose parser
+#   • Explicit command: ["gateway", "run"] — prevents the default `hermes`
+#     invocation which launches an interactive TUI (crash-loops without a TTY)
+#   • Single service — with network_mode: host gone, a separate dashboard
+#     container would bind to 127.0.0.1 inside its own isolated network and
+#     be unreachable; the s6-supervised dashboard inside this container is
+#     used instead, toggled by HERMES_DASHBOARD
+#
+# Interface: Slack Socket Mode — outbound WebSocket only, no inbound ports
+# LLM:       Google Gemini — set GOOGLE_API_KEY in Coolify's environment UI
+#
+# ─── Required: set these in Coolify → Service → Environment ────────────────
+#
+#   HERMES_UID           10000
+#   HERMES_GID           10000
+#   SLACK_BOT_TOKEN      xoxb-...          (Bot User OAuth Token)
+#   SLACK_APP_TOKEN      xapp-...          (App-Level Token for Socket Mode)
+#   SLACK_ALLOWED_USERS  U01234,U56789     (comma-separated Slack user IDs)
+#   GOOGLE_API_KEY       AIza...           (Google AI Studio → aistudio.google.com)
+#
+# ─── First-run: set Gemini as the default model ────────────────────────────
+#
+# On first boot the config is seeded with claude-opus as the default model.
+# After the container starts, exec in once to switch to Gemini:
+#
+#   docker exec <container> hermes model gemini/gemini-2.5-pro-preview
+#
+# Or enable the dashboard (see below) and change it from there.
+#
+# ─── Optional: web dashboard on port 9119 ──────────────────────────────────
+#
+# To enable the dashboard, add these to Coolify's environment variables:
+#
+#   HERMES_DASHBOARD         true
+#   HERMES_DASHBOARD_INSECURE true    (unless you configure OAuth)
+#
+# Then expose port 9119 via Coolify's service port editor, or add to this
+# file under the gateway service:
+#
+#   ports:
+#     - "9119:9119"
+#
+services:
+  gateway:
+    build: .
+    restart: unless-stopped
+    volumes:
+      - hermes-data:/opt/data
+    environment:
+      - HERMES_UID=${HERMES_UID:-10000}
+      - HERMES_GID=${HERMES_GID:-10000}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
+      - SLACK_APP_TOKEN=${SLACK_APP_TOKEN:-}
+      - SLACK_ALLOWED_USERS=${SLACK_ALLOWED_USERS:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - HERMES_DASHBOARD=${HERMES_DASHBOARD:-}
+      - HERMES_DASHBOARD_HOST=0.0.0.0
+      - HERMES_DASHBOARD_PORT=${HERMES_DASHBOARD_PORT:-9119}
+      - HERMES_DASHBOARD_INSECURE=${HERMES_DASHBOARD_INSECURE:-}
+    command: ["gateway", "run"]
+
+volumes:
+  hermes-data:
