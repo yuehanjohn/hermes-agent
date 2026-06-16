@@ -1422,6 +1422,29 @@ def _resolve_model() -> str:
     return "anthropic/claude-sonnet-4"
 
 
+def _model_provider_has_key(model: str, explicit_provider: str) -> bool | None:
+    """Return True if the provider for *model* has an API key in the environment.
+
+    Returns False if the provider is identified but has no key.
+    Returns None when the provider cannot be determined (OAuth, unknown, etc.).
+    """
+    try:
+        from providers import get_provider_profile
+        prov_name = explicit_provider.lower() if explicit_provider else ""
+        if not prov_name:
+            slash = model.find("/")
+            if slash > 0:
+                prov_name = model[:slash].lower()
+        if not prov_name:
+            return None
+        profile = get_provider_profile(prov_name)
+        if profile is None or not profile.env_vars:
+            return None  # OAuth or unrecognised provider — can't tell from env
+        return any(os.environ.get(v, "").strip() for v in profile.env_vars)
+    except Exception:
+        return None
+
+
 def _config_model_target() -> tuple[str, str]:
     """(model, provider) currently selected by config (env as fallback).
 
@@ -1431,6 +1454,11 @@ def _config_model_target() -> tuple[str, str]:
     container env); if they outranked config.yaml, the per-turn sync would
     stay pinned to the seed forever and dashboard/CLI model changes would
     never reach an open chat — the exact bug this sync exists to fix.
+
+    Exception: if the config.yaml model's provider has no API key in the
+    environment but the HERMES_INFERENCE_MODEL env var model's provider does,
+    the env var wins. This handles hosted deployments (e.g. Coolify) where a
+    stale persistent volume retains a model from a prior provider.
     """
     cfg_model = _load_cfg().get("model")
     model = ""
@@ -1444,6 +1472,17 @@ def _config_model_target() -> tuple[str, str]:
         model = cfg_model.strip()
     if not model:
         model = _resolve_model()
+        return model, provider
+
+    env_model = (
+        os.environ.get("HERMES_MODEL", "") or os.environ.get("HERMES_INFERENCE_MODEL", "")
+    ).strip()
+    if env_model and env_model != model:
+        cfg_has_key = _model_provider_has_key(model, provider)
+        env_has_key = _model_provider_has_key(env_model, "")
+        if cfg_has_key is False and env_has_key is True:
+            return env_model, ""
+
     return model, provider
 
 
