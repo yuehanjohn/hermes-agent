@@ -1,0 +1,9 @@
+name: nango
+version: 1.0.0
+description: "Nango integration — 3 tools (connect, call, connections) for calling third-party APIs via Nango's OAuth proxy. Auth managed in Nango dashboard. Requires NANGO_HOST and NANGO_SECRET_KEY env vars."
+author: NousResearch
+kind: backend
+provides_tools:
+  - nango_connect
+  - nango_call
+  - nango_connections

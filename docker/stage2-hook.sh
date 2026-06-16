@@ -347,6 +347,18 @@ seed_one ".env" ".env.example"
 seed_one "config.yaml" "cli-config.yaml.example"
 seed_one "SOUL.md" "docker/SOUL.md"
 
+# --- Auto-fix mismatched model on every boot ---
+# If a Gemini key is present but config still has an Anthropic model name
+# (the historical seed default), patch it to gemini/gemini-2.5-pro.
+# Runs on every boot so it also fixes persisted volumes from old deployments.
+if [ -n "${GOOGLE_API_KEY:-}" ] || [ -n "${GEMINI_API_KEY:-}" ]; then
+    _cfg="$HERMES_HOME/config.yaml"
+    if [ -f "$_cfg" ] && grep -q 'default: "anthropic/' "$_cfg"; then
+        sed -i 's|default: "anthropic/[^"]*"|default: "gemini/gemini-2.5-pro"|' "$_cfg"
+        echo "[stage2] Auto-configured model to gemini/gemini-2.5-pro (Gemini key detected, Anthropic model name replaced)"
+    fi
+fi
+
 # .env holds API keys and secrets — restrict to owner-only access. Applied
 # unconditionally (not only on first-seed) so a host-mounted .env that was
 # created with a permissive umask gets tightened on every container start.
