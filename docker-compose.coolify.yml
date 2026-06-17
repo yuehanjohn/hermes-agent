@@ -49,6 +49,7 @@ services:
     volumes:
       - hermes-data:/opt/data
     environment:
+      - PATH=/opt/hermes/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN:-}
